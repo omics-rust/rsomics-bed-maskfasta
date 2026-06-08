@@ -41,6 +41,22 @@ fn run_ours(fasta: &Path, bed: &Path, mode: &MaskMode) -> String {
     String::from_utf8(buf).unwrap()
 }
 
+// Byte-for-byte against output frozen from bedtools v2.31.1
+// (`bedtools maskfasta` hard / -soft / -mc X). Always runs so CI guards masking
+// and FASTA line-wrap drift even where bedtools is absent.
+#[test]
+fn matches_bedtools_golden() {
+    let (fa, bed) = (golden("genome.fa"), golden("regions.bed"));
+    for (mode, expected) in [
+        (MaskMode::Hard(b'N'), "mask_hard.expected"),
+        (MaskMode::Soft, "mask_soft.expected"),
+        (MaskMode::Hard(b'X'), "mask_mc.expected"),
+    ] {
+        let want = std::fs::read_to_string(golden(expected)).unwrap();
+        assert_eq!(run_ours(&fa, &bed, &mode), want, "{expected}");
+    }
+}
+
 #[test]
 fn matches_bedtools_hard_mask() {
     if !bedtools_present() {
